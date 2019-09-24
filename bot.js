@@ -1,81 +1,103 @@
+// - Setting Constants -
 const Discord = require("discord.js");
-const bot = new Discord.Client();
 const config = require("./config.json");
+const mongoose = require("mongoose");
+const fetch = require("node-fetch");
+
+// - Other Constants -
+const bot = new Discord.Client();
 const now = new Date();
-	
+
+// - Setting Variables -
+var userId;
+var authorId;
 var prefix = config.prefix;
+let uri = "mongodb+srv://Gemesil:nolooker101@nfcluster-6bgzx.mongodb.net/test?retryWrites=true&w=majority";
+
+// - Mongoose Connection -
+mongoose.connect(uri, {useNewUrlParser: true});
+var dbAdmin = mongoose.model('Admins', mongoose.Schema({_id: String}));
+var dbIgnore = mongoose.model('banList', mongoose.Schema({_id: String, reason: String}));
 
 // - Start -
 bot.login(config.token);
 
-// - Set the bot's online status -
+// - Bot Status -
 bot.on("ready", () => {
 	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: BOT ON');
     bot.user.setStatus("online");
 	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: BOT STATUS SET.');
-	bot.user.setGame("as a clan");
-	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: BOT CHANGED GAME.');
+	bot.user.setGame("my good christian girlfriend");
+	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: BOT SET GAME.');
 });
 
+// - Welcome Message -
 bot.on('guildMemberAdd', member => {
 	message.channel.send("Hello " + memeber.name + ", and welcome!");
+	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: WELCOMED' + member.name + '.');
 });
+
+// - Checks if message author is in admin db -
+function checkAdmin(authorId) {
+	if(dbAdmin.collection("Admins").find({_id: authorId}, {_id: 1}).limit(1).size() === true)
+		return true; 
+	else
+		return false;
+}
+
+// - Checks if member is ignored by the bot -
+function isIgnored(authorId) {
+	if(dbIgnore.collection("banList").find({_id: authorId}, {_id: 1}) === true)
+	{
+		msg.reply("I'm supposed to ignore you, so hmm, no talker sorry.")
+		return true;
+	}
+	else
+		return false;
+}
 
 // - Text Commands -
 bot.on("message", async message => {
-	if(message.content.indexOf(config.prefix) != 0) return; // checks if prefix is in the command
-	if(message.author.bot) return; // won't respond to another bot
 	
-	const command = message.content.toLowerCase();
-	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: ' + message.author.name + ' command = ' + command + '')
-		if(message.isMemberMentioned("215522865376788480")) // if gemesil is mentioned
-		{
-			message.reply("fuck off " + message.guild.members.get("215522865376788480") + ", fucking cunt!")
-		}
-		if(message.isMentioned(bot))
-		{
-			message.reply("My prefix is " + prefix);
-		}
-		
-		if(command.startsWith(prefix + 'copycat'))
-		{
-			/*if(message.author.roles.has("484050877183950849")) // not working
-			{*/
-				if(bot.user.avatarURL != message.author.avatarURL)
-					bot.user.setAvatar(message.author.avatarURL);
+	// Checks if prefix is in the command
+	if(message.content.startsWith(config.prefix) != 0) return;
 
-				var game = message.author.presence.game.name; // not working
-				if(game != null)
-				{
-					game = game.name.toString();
-					bot.user.setGame(message.author.game.name);
-				}
-				message.author.send("I have now taken your identity! <:dab:486173157984829443>")
-			/*}
-			else {
-				message.reply("You don't have the correct role for this! :lol:486173222530842635");
-			}*/
-		}
+	// Checks if the message was sent by a bot
+	if(message.author.bot) return; 
 
-		if(command === prefix + 'help') {
-			var helpMsg = "";
+	// Checks if member is ignored by bot
+	if(isIgnored(message.author.id)) return;
+
+	// Setup Stuff
+	message.replace(config.prefix, ""); // remove prefix
+	const command = message.content.toLowerCase(); // set to lower case
+	authorId = message.author.id;
+	
+	console.log('[' + now.toString().replace(/GMT.*/g,) + ']: ' + message.author.name + '(ID: ' + message.author.id + ') used command = ' + command + '')
+
+	// - Admin Only Commands -
+	if(checkAdmin(authorId))
+	{
+		// - Toggle Command -
+		if(command === 'toggle help' || command === 'toggle')
+		{
 			message.channel.send({embed: {
 				color: 0xa39a9c,
-				author: {
-					name: message.author.username,
-					icon_url: message.author.avatarURL
-				},
-				title: "Here's the **" + prefix + "help** super helpful commands:",
+				title: "Here's the **" + prefix + "toggle** commands",
 				fields: [{
-					name: "__Role Commands__ \n",
-					value: prefix + "**rolelist** - to see a list of possible roles to choose from.\n" + 
-					prefix + "**togglerole (role name)** - to toggle a certain role for yourself.\n"
+					name: "__Toggle Per Command__ \n",
+					value: prefix + "**toggle say** - toggles the say command.\n" + 
+					prefix + "**toggle copycat** - toggles the copycat command."
 				  },
 				  {
-					name: "__Room Commands__\n",
-					value: prefix + "**joinroom (channel name)** - sends a request to join a private room.\n" +
-					prefix + "**createprivate (channel name)** - create your own private voice channel.\n" +
-					prefix + "**togglelock (channel name)** - toggles the voice channel lock."
+					name: "__Other Admin Commands__\n",
+					value: prefix + "**ignore [user mention]** - makes me ignore the user(use " + prefix + "**ig [user]** to shorten).\n" +
+					prefix + "**mad [user mention]** - changes the behavior of the bot towards the user."
+				  },
+				  {
+					name: "__Toggle Per Guild__ \n",
+					value: prefix + "**toggle welcome** - toggles bot welcome to new users.\n" +
+					"*More coming soonTM!*"
 				  }
 				],
 				footer: {
@@ -85,326 +107,150 @@ bot.on("message", async message => {
 			}});
 		}
 		
-		if(command === prefix + 'rolelist') {
-			var noneCheck = 0;
-			var roleMsg = "";
-			if(!message.member.roles.has("484079847044284437")) // B1944
+		// - Ignore Command -
+		if(command.startsWith('ignore ') || command.startsWith('ig '))
+		{
+			// Var Decleration
+			userId = command.mentions.users.first().id;
+			if(userId === null) // if there are no id's
 			{
-				roleMsg += "• Battalion 1944\n";
-				noneCheck++;
+				msg.reply("you didn't mention anyone.. how dare you!");
+				return;
 			}
-			if(!message.member.roles.has("484077948563881985")) // BF
+
+			// Accounting for both command cases
+			if(command.indexOf('ignore '))
+				var reas = command.replace('ignore ','');
+			else 
+				var reas = command.replace('ig ','');
+
+			// Setting DB
+			reas = reas.replace(userId, '');
+			if(authorId === userId)
 			{
-				roleMsg += "• Battlefield\n";
-				noneCheck++;
-			}
-			if(!message.member.roles.has("484078164541308931")) // CS
-			{
-				roleMsg += "• Counter-Strike\n";
-				noneCheck++;
-			}
-			if(!message.member.roles.has("484366547729514511")) // DBD
-			{
-				roleMsg += "• Dead-By-Daylight\n";
-				noneCheck++;
-			}
-			if(!message.member.roles.has("484078520859885601")) // RS
-			{
-				roleMsg += "• Rainbow-Six\n";
-				noneCheck++;
-			}
-			if(!message.member.roles.has("484365858895036416")) // RL
-			{
-				roleMsg += "• Rocket-League\n";
-				noneCheck++;
-			}
-			roleMsg += 'And don\'t forget to use the exact command syntax - **' + prefix + 'togglerole [rolename]**.';
-			
-			if(noneCheck != 0 && !message.member.roles.has("484051988271726595"))
-			{
-				message.channel.send({embed: {
-					color: 0xa39a9c,
-					author: {
-						name: message.author.username,
-						icon_url: message.author.avatarURL
-					},
-					title: "The roles you can assign yourself to are:",
-					description: "" + roleMsg + "",
-					footer: {
-						icon_url: bot.user.avatarURL,
-						text: "© nfBot"
-					}
-				}});
+				msg.reply('you can\'t ignore yourself, stupid!');
 			}
 			else
 			{
-				message.channel.send({embed: {
-					color: 0xa39a9c,
-						author: {
-						name: message.author.username,
-						icon_url: message.author.avatarURL
-					},
-					title: "The roles you can assign yourself to are:",
-					description: "• None\nYou already have all of the game roles.",
-					footer: {
-						icon_url: bot.user.avatarURL,
-						text: "© nfBot"
-					}
-				}});
+				var newIg = new dbIgnore({ _id: userId, reason: reas });
+ 				await newIg.save();
 			}
 		}
-		
-		if(command.startsWith(prefix + 'say')) {
-			var sayMessage = message.content;
-			sayMessage = sayMessage.replace(prefix + 'say', '');
-			message.delete().catch(O_o=>{}); 
-			message.channel.send(sayMessage);
-		}
-		
-		if(command === prefix + 'togglerole battalion1944') {
-			if(!message.member.roles.has("484051988271726595")) // if member doesn't have All Games role
-			{
-				if(!message.member.roles.has("484079847044284437")) // if member doesn't have game role
-				{
-					message.member.addRole("484079847044284437").catch(console.error); // add role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **added** to the next roles:",
-						footer: {
-							icon_url: "https://i.imgur.com/r0b2O5d.png",
-							text: "Battalion 1944"
-						}
-					}});
-				}
-				else // if member has role game
-				{
-					message.member.removeRole("484079847044284437").catch(console.error); // remove role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **removed** from the next roles:",
-						footer: {
-							icon_url: "https://i.imgur.com/r0b2O5d.png",
-							text: "Battalion 1944"
-						}
-					}});
-				}
-			}
-			else {
-				message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "Sorry, you already have the \"All Games\" role. **!togglerole All Games** to toggle it off.",
-						footer: {
-							icon_url: bot.user.avatarURL,
-							text: "© nfBot"
-						}
-					}});
-			}
-		}
-		
-		if(command === prefix + 'togglerole battlefield')
+
+		// - Change Prefix -
+		// if(command.startsWith('prefix set ') || command.startsWith('pref s '))
+		// {
+		//	if(command.indexOf('prefix set '))
+		//		prefix = command.replace('prefix set ', '');
+		//	else
+		//		prefix = command.replace('pref s ', '');
+		// }
+	}
+	else
+		msg.reply('sorry but you seem to lack permissions to use that command! if you believe this is an error please contact an administrator.');
+
+	// MAKE A TUTORIAL COMMAND THAT BRIEFLY EXPLAINS ABOUT THE BOT INCLUDING THE ORIGIN OF ITS NAME, HEELLOO IM THE WACCKKYYY NFBOT!
+
+	// if(message.startsWith("create command ") && m.indexOf("--reply ") != -1)
+  //   {
+  //     var indexEnd = message.indexOf("--reply");
+  //     var name = message.slice(15,indexEnd -1 );
+  //     var reply = message.slice(indexEnd + 7, m.length);
+  //   	var newC = await new dbCmd({name: name, reply: reply});
+  //     await newC.save();
+  //     msg.reply("command created, now leave me alone");
+	//   }
+	
+	// fetch("https://icanhazdadjoke.com/", {headers: {
+  //                   'Accept': 'text/plain',
+  //               }}).then(Response=>{return Response.text();}).then(res=>{console.log(res);msg.reply(res)});
+
+	// if(message == "all commands")
+	// {
+	// 	var commands = await dbCmd.find();
+	// 	await console.log(dbCmd);
+	// 	var rep = "User created commands: (prefixes: @ / alexa)\n";
+	// 	await commands.forEach(data => {rep += "alexa " + data.name + "\n"})
+	// 	await msg.reply(rep);
+	// }
+	
+	// else {
+	// 	//console.log(m);
+	// 	var wantedCommand = await dbCmd.findOne({name: message});
+	// 	//await console.log(wantedCommand);
+	// 	if(wantedCommand != undefined)
+	// 	{
+	// 		await msg.reply(wantedCommand.reply);
+	// 	}
+	// 	else msg.reply('I found no results of "I am an idiot, kill me please"' + ", did you mean something else? I seriously don't care. (command not found)");
+	// 	//await console.log(wantedCommand);
+	// }
+
+	// - Bot Mention -
+	if(message.isMentioned(bot.user))
+	{
+		message.reply("my current prefix is \"" + prefix + "\".");
+	}
+			
+	// - Copycat -
+	if(command === 'copycat')
+	{
+		if(bot.user.avatarURL != message.author.avatarURL)
 		{
-			if(!message.member.roles.has("484051988271726595")) // if member doesn't have All Games role
-			{
-				if(!message.member.roles.has("484077948563881985")) // if member doesn't have game role
-				{
-					message.member.addRole("484077948563881985").catch(console.error); // add role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **added** to the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/6sofuME.png",
-							text: "Battlefield"
-						}
-					}});
-				}
-				else // if member has role game
-				{ 
-					message.member.removeRole("484077948563881985").catch(console.error); // remove role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **removed** from the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/6sofuME.png",
-							text: "Battlefield"
-						}
-					}});
-				}
-			}
+			bot.user.setAvatar(message.author.avatarURL);
+			message.author.send("I have now taken your identity! dab <:")
 		}
-		
-		if(command === prefix + 'togglerole counter-strike')
+	}
+
+	// - Get the profile picture of anyone who's on the server -
+	if(command.startsWith('profilepic '))
+	{
+		userId = command.mentions.users.first().id;
+		if(userId === null) // if there are no id's
 		{
-			if(!message.member.roles.has("484051988271726595")) // if member doesn't have All Games role
-			{
-				if(!message.member.roles.has("484078164541308931")) // if member doesn't have game role
-				{
-					message.member.addRole("484078164541308931").catch(console.error); // add role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **added** to the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/kkxdJWP.png",
-							text: "Counter-Strike"
-						}
-					}});
-				}
-				else // if member has role game
-				{ 
-					message.member.removeRole("484078164541308931").catch(console.error); // remove role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **removed** from the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/kkxdJWP.png",
-							text: "Counter-Strike"
-						}
-					}});
-				}
-			}
+			msg.reply("you didn't mention anyone.. how dare you!");
+			return;
 		}
-		
-		if(command === prefix + 'togglerole dead-by-daylight')
-		{
-			if(!message.member.roles.has("484051988271726595")) // if member doesn't have All Games role
+		userName = command.mentions.users.first().name;
+		const picEmbed = new Discord.RichEmbed()
+		.setColor('#2fc236')
+		.setTitle(userName + '\'s amazing profile picture:')
+		.setImage(message.author.avatarURL)
+		.setFooter('Sponsored by: GemPhotos - get your own picture today!', bot.user.avatarURL);
+
+		channel.send(picEmbed);
+	}
+
+	// - Say -
+	if(command.startsWith('say ')) {
+		var sayMessage = message.content;
+		sayMessage = sayMessage.replace('say', '');
+		message.delete().catch(O_o=>{}); 
+		message.channel.send(sayMessage);
+	}
+
+	// - Help -
+	if(command === 'help') {
+		var helpMsg = "";
+		message.channel.send({embed: {
+			color: 0xa39a9c,
+			title: "Here's the **" + prefix + "help** super helpful commands:",
+			fields: [{
+				name: "__User Commands__ \n",
+				value: prefix + "**copycat** - makes me take on your appearance.\n" + 
+				prefix + "**say [text]** - sudo\'s me to say anything.\n"
+			},
 			{
-				if(!message.member.roles.has("484366547729514511")) // if member doesn't have game role
-				{
-					message.member.addRole("484366547729514511").catch(console.error); // add role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **added** to the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/hALa7gD.jpg",
-							text: "Dead-By-Daylight"
-						}
-					}});
-				}
-				else // if member has role game
-				{ 
-					message.member.removeRole("484366547729514511").catch(console.error); // remove role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **removed** from the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/hALa7gD.jpg",
-							text: "Dead-By-Daylight"
-						}
-					}});
-				}
+			name: "__Admin-Only Commands__\n",
+			value: prefix + "**toggle** - toggles many things.\n" +
+			prefix + "**prefix set [text]** - changes the bot\'s prefix, character limit is 3.\n" +
+			"*More to come soonTM!*"
 			}
-		}
-		
-		if(command === prefix + 'togglerole rainbow-six')
-		{
-			if(!message.member.roles.has("484051988271726595")) // if member doesn't have All Games role
-			{
-				if(!message.member.roles.has("484078520859885601")) // if member doesn't have game role
-				{
-					message.member.addRole("484078520859885601").catch(console.error); // add role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **added** to the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/daHGBzu.jpg",
-							text: "Rainbow-Six"
-						}
-					}});
-				}
-				else // if member has role game
-				{ 
-					message.member.removeRole("484078520859885601").catch(console.error); // remove role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **removed** from the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/daHGBzu.jpg",
-							text: "Rainbow-Six"
-						}
-					}});
-				}
+			],
+			footer: {
+				icon_url: bot.user.avatarURL,
+				text: "© nfBot"
 			}
-		}
-		
-		if(command === prefix + 'togglerole rocket-league')
-		{
-			if(!message.member.roles.has("484051988271726595")) // if member doesn't have All Games role
-			{
-				if(!message.member.roles.has("484365858895036416")) // if member doesn't have game role
-				{
-					message.member.addRole("484365858895036416").catch(console.error); // add role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **added** to the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/ZoZy5Rh.png",
-							text: "Rocket-League"
-						}
-					}});
-				}
-				else // if member has role game
-				{ 
-					message.member.removeRole("484365858895036416").catch(console.error); // remove role
-					message.channel.send({embed: {
-						color: 0xa39a9c,
-						 author: {
-							name: message.author.username,
-							icon_url: message.author.avatarURL
-						},
-					title: "You have been successfully **removed** from the next role:",
-						footer: {
-							icon_url: "https://i.imgur.com/ZoZy5Rh.png",
-							text: "Rocket-League"
-						}
-					}});
-				}
-			}
-		}
+		}});
+	}
 });
