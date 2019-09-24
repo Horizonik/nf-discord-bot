@@ -13,10 +13,14 @@ var authorId;
 var prefix = config.prefix;
 let uri = "mongodb+srv://Gemesil:nolooker101@nfcluster-6bgzx.mongodb.net/test?retryWrites=true&w=majority";
 
+
 // - Mongoose Connection -
 mongoose.connect(uri, {useNewUrlParser: true});
-var dbAdmin = mongoose.model('Admins', mongoose.Schema({_id: String}));
-var dbIgnore = mongoose.model('banList', mongoose.Schema({_id: String, reason: String}));
+var admCmd = mongoose.Schema({_id: String});
+var dbAdmin = mongoose.model('Admins', admCmd);
+
+var igCmd = mongoose.Schema({_id: String, reason: String});
+var dbIgnore = mongoose.model('banList', igCmd);
 
 // - Start -
 bot.login(config.token);
