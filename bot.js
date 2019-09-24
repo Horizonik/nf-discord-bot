@@ -2,7 +2,6 @@
 const Discord = require("discord.js");
 const config = require("./config.json");
 const mongoose = require("mongoose");
-const fetch = require("node-fetch");
 
 // - Other Constants -
 const bot = new Discord.Client();
