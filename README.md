@@ -1,5 +1,5 @@
 # nf-discord-bot
-A discord bot used to joke around with friends, made by your lovely Gemesil.
+A discord bot used to joke around with friends, made by your lovely.
 
 ## Usage
 Use @NFBot to get the prefix for the commands(default prefix = '?').
